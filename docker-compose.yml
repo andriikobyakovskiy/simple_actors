@@ -1,4 +1,4 @@
-redis:
-  image: redis
+rabbit:
+  image: rabbitmq
   ports:
-    - 6798:5278
+    - 6798:5672

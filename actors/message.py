@@ -1,4 +1,7 @@
+import dataclasses
 import uuid
+import json
+
 from dataclasses import dataclass, field
 
 
@@ -11,3 +14,11 @@ class Message:
 @dataclass(frozen=True)
 class PoisonPill(Message):
     pass
+
+
+class MessageJSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, Message):
+            return dataclasses.asdict(o)
+        return super().default(o)
+
