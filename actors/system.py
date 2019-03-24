@@ -1,15 +1,13 @@
-import dataclasses
 import threading
 import uuid
 
 import pika
-import json
 
 from dataclasses import dataclass
 from typing import Dict, Union
 
 from actors.actor import Props, Actor
-from actors.message import Message, MessageJSONEncoder
+from actors.message import Message, MessageJSONEncoder, MessageJSONDecoder
 
 
 @dataclass(frozen=True)
@@ -28,11 +26,12 @@ class ActorSystem:
     def _actor_thread(self, actor_id: str):
         new_channel = self._connection.channel()
         self._channels[actor_id] = new_channel
+        decoder = MessageJSONDecoder()
         new_channel.queue_declare(name=actor_id)
         new_channel.queue_bind(exchange=self.MAIN_EXCHANGE_NAME, queue=actor_id, routing_key=actor_id)
 
         def callback(ch, method, properties, body):
-            self._actors[actor_id].receive(None)
+            self._actors[actor_id].receive(decoder.decode(body))
 
         new_channel.basic_consume(callback, queue=actor_id, no_ack=True)
         new_channel.start_consuming()
