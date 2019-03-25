@@ -3,20 +3,10 @@ import uuid
 
 import pika
 
-from dataclasses import dataclass
 from typing import Dict, Union
 
-from actors.actor import Props, Actor
+from actors.actor import Props, Actor, ActorRef
 from actors.message import Message, MessageJSONEncoder, MessageJSONDecoder
-
-
-@dataclass(frozen=True)
-class ActorRef:
-    actor_id: str
-    system: 'ActorSystem'
-
-    def tell(self, message: Message):
-        self.system.add_message(self.actor_id, message)
 
 
 class ActorSystem:
@@ -27,11 +17,15 @@ class ActorSystem:
         new_channel = self._connection.channel()
         self._channels[actor_id] = new_channel
         decoder = MessageJSONDecoder()
-        new_channel.queue_declare(name=actor_id)
+        new_channel.queue_declare(queue=actor_id)
         new_channel.queue_bind(exchange=self.MAIN_EXCHANGE_NAME, queue=actor_id, routing_key=actor_id)
 
         def callback(ch, method, properties, body):
-            self._actors[actor_id].receive(decoder.decode(body))
+            message_string = body.decode()
+            print("Got body: " + message_string)
+            message = decoder.decode(message_string)
+            print("Got message: " + str(message))
+            self._actors[actor_id].receive(message)
 
         new_channel.basic_consume(callback, queue=actor_id, no_ack=True)
         new_channel.start_consuming()
@@ -55,7 +49,7 @@ class ActorSystem:
         )
 
     def actor_of(self, actor_type: type, props: Union[Props, type(None)]) -> ActorRef:
-        new_actor_id = uuid.uuid4().hex
+        new_actor_id = 'actor_' + uuid.uuid4().hex
         self._actors[new_actor_id] = actor_type(self, new_actor_id)
         self._actors[new_actor_id].on_create(props)
         self._threads[new_actor_id] = threading.Thread(

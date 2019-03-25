@@ -8,11 +8,25 @@ class Props:
     pass
 
 
+@dataclass(frozen=True)
+class ActorRef:
+    actor_id: str
+    system: 'ActorSystem'
+
+    def tell(self, message: Message):
+        self.system.add_message(self.actor_id, message)
+
+
 class Actor:
 
     def __init__(self, system: 'ActorSystem', actor_id: str):
         self._system = system
         self.ID = actor_id
+        self._current_message: Message = None
+
+    @property
+    def sender(self):
+        return ActorRef(self._current_message.sender_id, self._system)
 
     def receive(self, message: Message):
         raise NotImplementedError()

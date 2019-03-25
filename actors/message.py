@@ -1,4 +1,5 @@
 import dataclasses
+import functools
 import uuid
 import json
 
@@ -10,14 +11,10 @@ class MetaMessage(type):
 
     _registered_constructors = dict()
 
-    def __new__(cls, name, bases, dct):
-        x = super().__new__(cls, name, bases, dct)
-        cls._registered_constructors[name] = x.__init__
+    def __new__(mcs, name, bases, dct):
+        x = super().__new__(mcs, name, bases, dct)
+        mcs._registered_constructors[name] = lambda *args, **kwargs: x(*args, **kwargs)
         return x
-
-    def from_json(cls, dumped_message):
-        message_dict = json.loads(dumped_message)
-        message_class = message_dict.pop('_message_class')
 
 
 def _random_id():
@@ -26,8 +23,8 @@ def _random_id():
 
 @dataclass(frozen=True)
 class Message(metaclass=MetaMessage):
-    message_id: str = field(repr=False, init=False, default_factory=_random_id)
-    sender_id: str
+    sender_id: str = field(repr=False)
+    message_id: str = field(repr=False, default_factory=_random_id)
 
 
 @dataclass(frozen=True)
