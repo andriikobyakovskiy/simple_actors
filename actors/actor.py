@@ -13,8 +13,8 @@ class ActorRef:
     actor_id: str
     system: 'ActorSystem'
 
-    def tell(self, message: Message):
-        self.system.add_message(self.actor_id, message)
+    def tell(self, message: type, **kwargs):
+        self.system.add_message(self.actor_id, message(message_id=self.system._random_id(), **kwargs))
 
 
 class Actor:

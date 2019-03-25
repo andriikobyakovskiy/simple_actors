@@ -6,15 +6,21 @@ import pika
 from typing import Dict, Union
 
 from actors.actor import Props, Actor, ActorRef
-from actors.message import Message, MessageJSONEncoder, MessageJSONDecoder
+from actors.message import Message, MessageJSONEncoder, MessageJSONDecoder, PoisonPill
 
 
 class ActorSystem:
 
     MAIN_EXCHANGE_NAME = 'actors_routing_queue'
 
+    @classmethod
+    def _random_id(cls):
+        return uuid.uuid4().hex
+
     def _actor_thread(self, actor_id: str):
-        new_channel = self._connection.channel()
+        new_connection = pika.BlockingConnection(self._conn_params)
+        self._connections[actor_id] = new_connection
+        new_channel = new_connection.channel()
         self._channels[actor_id] = new_channel
         decoder = MessageJSONDecoder()
         new_channel.queue_declare(queue=actor_id)
@@ -25,6 +31,10 @@ class ActorSystem:
             print("Got body: " + message_string)
             message = decoder.decode(message_string)
             print("Got message: " + str(message))
+            if isinstance(message, PoisonPill):
+                new_channel.stop_consuming()
+                self._actors[actor_id].on_destroy(message)
+            self._actors[actor_id]._current_message = message
             self._actors[actor_id].receive(message)
 
         new_channel.basic_consume(callback, queue=actor_id, no_ack=True)
@@ -38,10 +48,12 @@ class ActorSystem:
         )
 
     def __init__(self, rabbit_host: str = '127.0.0.1', rabbit_port: int = 5672):
-        self._connection = pika.BlockingConnection(pika.ConnectionParameters(host=rabbit_host, port=rabbit_port))
+        self._conn_params = pika.ConnectionParameters(host=rabbit_host, port=rabbit_port)
+        self._connection = pika.BlockingConnection(self._conn_params)
         self._actors: Dict[str, Actor] = dict()
         self._threads: Dict[str, threading.Thread] = dict()
         self._channels: Dict[str, pika.BaseConnection] = dict()
+        self._connections: Dict[str, pika.BaseConnection] = dict()
         self._main_channel = self._connection.channel()
         self._main_channel.exchange_declare(
             exchange=self.MAIN_EXCHANGE_NAME,

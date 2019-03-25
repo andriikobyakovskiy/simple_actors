@@ -24,7 +24,7 @@ def _random_id():
 @dataclass(frozen=True)
 class Message(metaclass=MetaMessage):
     sender_id: str = field(repr=False)
-    message_id: str = field(repr=False, default_factory=_random_id)
+    message_id: str = field(repr=False)
 
 
 @dataclass(frozen=True)
