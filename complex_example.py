@@ -1,7 +1,7 @@
 import datetime
 import uuid
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from actors import ActorSystem, Actor, Message, PoisonPill, Props
 
@@ -42,7 +42,13 @@ class Timer(Actor):
             raise Exception("Wrong Properties class")
 
     def _get_units_passed(self):
-        return getattr(datetime.datetime.now() - self._creation_time, self._units, -1)
+        seconds = (datetime.datetime.now() - self._creation_time).seconds
+        if self._units == Timer.TimeUnits.SECONDS:
+            return seconds
+        elif self._units == Timer.TimeUnits.MINUTES:
+            return seconds // 60
+        elif self._units == Timer.TimeUnits.HOURS:
+            return seconds // 3600
 
     def receive(self, message: Message):
         if isinstance(message, Timer.GetTime):
@@ -58,7 +64,6 @@ class TimerManager(Actor):
 
     @dataclass(frozen=True)
     class CreateTimer(Message):
-        sender_id: str
         units: str
 
     class PrintTimers(Message):
@@ -98,7 +103,7 @@ class TimerManager(Actor):
 
 
 def main():
-    system = ActorSystem()
+    system = ActorSystem(rabbit_port=6798)
     manager = system.actor_of(TimerManager, None)
     while True:
         com = input('>>>')
