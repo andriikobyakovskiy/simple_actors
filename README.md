@@ -1,8 +1,8 @@
-#SIMPLE ACTORS
+# SIMPLE ACTORS
 
 Trivial Akka-inspired RabbitMQ based actors system for python.
 
-##Roadmap
+## Roadmap
 
 Nearest:
 1) Customising logging
@@ -11,5 +11,5 @@ Nearest:
 4) Tests
 
 In far future:
-2) `.ask` method for actors
-3) `asyncio` version
+1) `.ask` method for actors
+2) `asyncio` version
